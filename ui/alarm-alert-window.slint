@@ -1,0 +1,150 @@
+// ============================================================
+//  alarm-alert-window.slint - 闹钟响铃提醒窗口
+// ============================================================
+
+import { AmberTheme, GlassButton } from "widgets.slint";
+
+export component AlarmAlertWindow inherits Window {
+    in property <string> alarm-time;
+    in property <string> memo;
+    callback stop-alarm();
+
+    title: "便签闹钟";
+    icon: @image-url("../assets/icon.png");
+    no-frame: true;
+    background: transparent;
+    preferred-width: 360px;
+    preferred-height: 260px;
+    min-width: 320px;
+    min-height: 230px;
+
+    panel := Rectangle {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        border-radius: AmberTheme.radius-lg;
+        background: rgba(255, 255, 255, 0.94);
+        border-width: 1px;
+        border-color: rgba(245, 166, 35, 0.55);
+
+        Rectangle {
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: 82px;
+            border-radius: AmberTheme.radius-lg;
+            background: @linear-gradient(
+                180deg,
+                rgba(251, 191, 36, 0.24),
+                rgba(255, 255, 255, 0.02)
+            );
+        }
+
+        VerticalLayout {
+            x: 24px;
+            y: 22px;
+            width: parent.width - 48px;
+            height: parent.height - 44px;
+            spacing: 14px;
+
+            HorizontalLayout {
+                height: 42px;
+                spacing: 12px;
+                alignment: start;
+
+                clock-mark := Rectangle {
+                    width: 42px;
+                    height: 42px;
+                    border-radius: 21px;
+                    background: AmberTheme.accent;
+                    border-width: 1px;
+                    border-color: AmberTheme.accent-dark;
+
+                    face := Rectangle {
+                        x: 10px;
+                        y: 10px;
+                        width: 22px;
+                        height: 22px;
+                        border-radius: 11px;
+                        background: rgba(255, 255, 255, 0.70);
+                        border-width: 2px;
+                        border-color: #1A1A2E;
+
+                        hour-hand := Rectangle {
+                            x: 10px;
+                            y: 4px;
+                            width: 2px;
+                            height: 8px;
+                            border-radius: 1px;
+                            background: #1A1A2E;
+                        }
+
+                        minute-hand := Rectangle {
+                            x: 10px;
+                            y: 10px;
+                            width: 8px;
+                            height: 2px;
+                            border-radius: 1px;
+                            background: #1A1A2E;
+                        }
+                    }
+                }
+
+                VerticalLayout {
+                    spacing: 2px;
+                    horizontal-stretch: 1;
+
+                    Text {
+                        text: "闹钟响了";
+                        color: AmberTheme.text-primary;
+                        font-size: 17px;
+                        font-weight: 700;
+                    }
+
+                    Text {
+                        text: root.alarm-time;
+                        color: AmberTheme.accent-dark;
+                        font-size: 13px;
+                        font-weight: 600;
+                    }
+                }
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+                vertical-stretch: 1;
+                min-height: 70px;
+                border-radius: AmberTheme.radius-md;
+                background: rgba(245, 166, 35, 0.10);
+                border-width: 1px;
+                border-color: rgba(245, 166, 35, 0.22);
+
+                Text {
+                    x: 14px;
+                    y: 12px;
+                    width: parent.width - 28px;
+                    height: parent.height - 24px;
+                    text: root.memo == "" ? "时间到了，该看一下你的安排了。" : root.memo;
+                    color: AmberTheme.text-primary;
+                    font-size: 14px;
+                    wrap: word-wrap;
+                    vertical-alignment: center;
+                }
+            }
+
+            HorizontalLayout {
+                height: 40px;
+                alignment: end;
+
+                GlassButton {
+                    label: "结束闹钟";
+                    active: true;
+                    min-width: 112px;
+                    height: 40px;
+                    clicked => { root.stop-alarm(); }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,223 @@
+// ============================================================
+//  app-window.slint - 主窗口布局
+//  顶部标题 + 置顶/最小化/关闭 + 便签/闹钟切换 + 内容区
+// ============================================================
+
+import { AmberTheme, GlassButton } from "widgets.slint";
+import { NotesPage } from "notes-page.slint";
+import { AlarmPage } from "alarm-page.slint";
+export { AlarmAlertWindow } from "alarm-alert-window.slint";
+
+export component AppWindow inherits Window {
+    // 窗口配置
+    background: transparent;
+    no-frame: true;
+    icon: @image-url("../assets/icon.png");
+    in-out property <length> window-w: 320px;
+    in-out property <length> window-h: 480px;
+    preferred-width: root.window-w;
+    preferred-height: root.window-h;
+    min-width: 280px;
+    min-height: 320px;
+    max-width: 600px;
+    max-height: 900px;
+    title: "便签";
+
+    // 置顶状态
+    in-out property <bool> is-pinned: true;
+
+    // 当前页面：0 = 便签，1 = 闹钟
+    in-out property <int> current-page: 0;
+
+    // ---- 便签数据 ----
+    in-out property <[string]> note-ids: [];
+    in-out property <[string]> note-contents: [];
+
+    // 便签编辑器控制（Rust 通过 set_xxx 控制开关）
+    in-out property <bool> note-editor-open: false;
+    in-out property <string> note-editor-id: "";
+    in-out property <string> note-editor-content: "";
+
+    // ---- 闹钟数据 ----
+    in-out property <[string]> alarm-ids: [];
+    in-out property <[string]> alarm-times: [];
+    in-out property <[string]> alarm-memos: [];
+    in-out property <[bool]> alarm-enables: [];
+
+    // ---- 回调：Rust 处理 ----
+    callback save-note(string, string);
+    callback delete-note(string);
+    callback load-note-for-edit(string);
+
+    callback save-alarm(string, string, string, string);
+    callback delete-alarm(string);
+    callback toggle-alarm(string);
+
+    callback toggle-pin(bool);
+    callback request-close();
+    callback request-minimize();
+    callback move-window(length, length);
+    callback resize-start();
+    callback resize-window(length, length);
+
+    // ==================== 水滴玻璃底板 ====================
+    main-bg := Rectangle {
+        border-radius: 16px;
+        background: rgba(215, 225, 240, 0.35);
+        border-width: 1px;
+        border-color: rgba(255, 255, 255, 0.35);
+
+        // 顶部水滴高光
+        Rectangle {
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: 60px;
+            border-radius: 16px;
+            background: @linear-gradient(
+                180deg,
+                rgba(255, 255, 255, 0.22),
+                rgba(200, 220, 245, 0.06)
+            );
+        }
+
+        VerticalLayout {
+            // ---- 头部 ----
+            header := Rectangle {
+                height: 48px;
+
+                HorizontalLayout {
+                    width: 100%;
+                    height: 100%;
+                    padding-left: 16px;
+                    padding-right: 8px;
+                    alignment: space-between;
+
+                    HorizontalLayout {
+                        spacing: 8px;
+                        alignment: start;
+
+                        Text {
+                            text: current-page == 0 ? "📝 便签" : "⏰ 闹钟";
+                            color: AmberTheme.accent;
+                            font-size: 15px;
+                            font-weight: 700;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    HorizontalLayout {
+                        spacing: 4px;
+
+                        // 置顶按钮
+                        GlassButton {
+                            label: is-pinned ? "📌" : "📍";
+                            icon-only: true;
+                            active: root.is-pinned;
+                            clicked => {
+                                root.is-pinned = !root.is-pinned;
+                                root.toggle-pin(root.is-pinned);
+                            }
+                        }
+                    }
+                }
+
+                // 拖拽层：覆盖标题区域（按钮区除外），上报鼠标偏移量
+                drag-touch := TouchArea {
+                    x: 0;
+                    y: 0;
+                    width: parent.width - 120px;
+                    height: parent.height;
+                    mouse-cursor: move;
+                    moved => {
+                        root.move-window(self.mouse-x - self.pressed-x, self.mouse-y - self.pressed-y);
+                    }
+                }
+            }
+
+            // ---- 切换栏 ----
+            HorizontalLayout {
+                height: 36px;
+                padding-left: 16px;
+                padding-right: 16px;
+                spacing: 8px;
+
+                GlassButton {
+                    label: "便签";
+                    active: current-page == 0;
+                    horizontal-stretch: 1;
+                    clicked => { current-page = 0; }
+                }
+
+                GlassButton {
+                    label: "闹钟";
+                    active: current-page == 1;
+                    horizontal-stretch: 1;
+                    clicked => { current-page = 1; }
+                }
+            }
+
+            // 分隔线
+            Rectangle {
+                height: 1px;
+                background: rgba(0, 0, 0, 0.08);
+            }
+
+            // ---- 内容区 ----
+            content := Rectangle {
+                vertical-stretch: 1;
+                clip: true;
+
+                if root.current-page == 0: NotesPage {
+                    width: parent.width;
+                    height: parent.height;
+                    note-ids <=> root.note-ids;
+                    note-contents <=> root.note-contents;
+                    editor-visible <=> root.note-editor-open;
+                    edit-id <=> root.note-editor-id;
+                    edit-content <=> root.note-editor-content;
+                    save-note(id, content) => { root.save-note(id, content); }
+                    delete-note(id) => { root.delete-note(id); }
+                    load-note-for-edit(id) => { root.load-note-for-edit(id); }
+                }
+
+                if root.current-page == 1: AlarmPage {
+                    width: parent.width;
+                    height: parent.height;
+                    alarm-ids <=> root.alarm-ids;
+                    alarm-times <=> root.alarm-times;
+                    alarm-memos <=> root.alarm-memos;
+                    alarm-enables <=> root.alarm-enables;
+                    save-alarm(id, hour, minute, memo) => { root.save-alarm(id, hour, minute, memo); }
+                    delete-alarm(id) => { root.delete-alarm(id); }
+                    toggle-alarm(id) => { root.toggle-alarm(id); }
+                }
+            }
+        }
+
+        // 右下角缩放把手
+        resize-grip := Rectangle {
+            x: parent.width - 22px;
+            y: parent.height - 22px;
+            width: 22px;
+            height: 22px;
+            background: transparent;
+
+            l1 := Rectangle { x: 14px; y: 9px;  width: 2px; height: 2px; background: AmberTheme.text-secondary; }
+            l2 := Rectangle { x: 11px; y: 12px; width: 3px; height: 2px; background: AmberTheme.text-secondary; }
+            l3 := Rectangle { x: 8px;  y: 15px; width: 5px; height: 2px; background: AmberTheme.text-secondary; }
+
+            rt := TouchArea {
+                mouse-cursor: se-resize;
+                pointer-event(ev) => {
+                    if ev.kind == PointerEventKind.down {
+                        root.resize-start();
+                    }
+                }
+                moved => {
+                    root.resize-window(self.mouse-x - self.pressed-x, self.mouse-y - self.pressed-y);
+                }
+            }
+        }
+    }
+}

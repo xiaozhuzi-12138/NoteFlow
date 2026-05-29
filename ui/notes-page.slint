@@ -1,0 +1,160 @@
+// ============================================================
+//  notes-page.slint - 便签页面：列表 + 编辑弹窗
+// ============================================================
+
+import { AmberTheme, GlassButton, GlassInput, NoteCard } from "widgets.slint";
+
+// -------- 便签编辑弹窗 --------
+export component NoteEditor inherits Rectangle {
+    in-out property <string> note-id;
+    in-out property <string> content-text;
+    callback save-clicked(string, string);
+    callback cancel-clicked();
+
+    background: rgba(180, 200, 220, 0.25);
+
+    // 居中卡片
+    card := Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: min(parent.width - 40px, 340px);
+        height: layout.preferred-height + 40px;
+        border-radius: AmberTheme.radius-lg;
+        background: rgba(255, 255, 255, 0.92);
+        border-width: 1px;
+        border-color: AmberTheme.border-glass;
+
+        layout := VerticalLayout {
+            x: 20px;
+            y: 20px;
+            width: parent.width - 40px;
+            spacing: 14px;
+
+            Text {
+                text: root.note-id == "" ? "新建便签" : "编辑便签";
+                color: AmberTheme.accent;
+                font-size: 16px;
+                font-weight: 700;
+            }
+
+            content-input := GlassInput {
+                text <=> root.content-text;
+                placeholder: "写点什么...";
+                multi-line: true;
+                height: 120px;
+            }
+
+            HorizontalLayout {
+                spacing: 10px;
+                alignment: end;
+
+                GlassButton {
+                    label: "取消";
+                    clicked => { root.cancel-clicked(); }
+                }
+
+                GlassButton {
+                    label: "✓ 保存";
+                    active: true;
+                    clicked => {
+                        root.save-clicked(root.note-id, root.content-text);
+                    }
+                }
+            }
+        }
+    }
+}
+
+// -------- 便签页面 --------
+export component NotesPage inherits Rectangle {
+    in-out property <[string]> note-ids;
+    in-out property <[string]> note-contents;
+
+    // 编辑器状态
+    in-out property <bool> editor-visible: false;
+    in-out property <string> edit-id: "";
+    in-out property <string> edit-content: "";
+
+    callback save-note(string, string);
+    callback delete-note(string);
+    callback load-note-for-edit(string);
+
+    background: transparent;
+
+    VerticalLayout {
+        spacing: 2px;
+        padding: 6px;
+
+        // 添加按钮行
+        HorizontalLayout {
+            alignment: end;
+
+            GlassButton {
+                label: "+ 新建便签";
+                active: true;
+                clicked => {
+                    root.editor-visible = true;
+                    root.edit-id = "";
+                    root.edit-content = "";
+                }
+            }
+        }
+
+        // 便签列表
+        Flickable {
+            vertical-stretch: 1;
+            viewport-height: notes-list.preferred-height;
+
+            notes-list := VerticalLayout {
+                spacing: 2px;
+
+                for id[i] in root.note-ids: NoteCard {
+                    note-id: id;
+                    content: root.note-contents[i];
+                    edit-clicked(id) => { root.load-note-for-edit(id); }
+                    delete-clicked(id) => { root.delete-note(id); }
+                }
+
+                // 空状态
+                if root.note-ids.length == 0: Rectangle {
+                    height: 120px;
+                    border-radius: AmberTheme.radius-md;
+                    background: rgba(255, 255, 255, 0.25);
+                    border-width: 1px;
+                    border-color: AmberTheme.border-glass;
+
+                    VerticalLayout {
+                        alignment: center;
+                        spacing: 8px;
+
+                        Text {
+                            text: "📝";
+                            font-size: 28px;
+                            horizontal-alignment: center;
+                        }
+
+                        Text {
+                            text: "暂无便签，点击上方按钮新建";
+                            color: AmberTheme.text-secondary;
+                            font-size: 13px;
+                            horizontal-alignment: center;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 编辑弹窗（覆盖层）
+    if root.editor-visible: NoteEditor {
+        width: root.width;
+        height: root.height;
+        note-id <=> root.edit-id;
+        content-text <=> root.edit-content;
+        save-clicked(id, content) => {
+            root.save-note(id, content);
+            root.editor-visible = false;
+        }
+        cancel-clicked() => { root.editor-visible = false; }
+    }
+}

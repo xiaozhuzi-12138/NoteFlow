@@ -1,0 +1,351 @@
+﻿// ============================================================
+//  widgets.slint - 主题常量 + 可复用组件
+//  水滴玻璃拟态 (Water-Drop Glassmorphism) + 琥珀金点缀色
+// ============================================================
+
+// -------- 主题全局常量 --------
+export global AmberTheme {
+    out property <color> accent: #F5A623;
+    out property <color> accent-light: #FBBF24;
+    out property <color> accent-dark: #D97706;
+    out property <color> bg-deep: #0D0D1A;
+    out property <color> bg-card: rgba(255, 255, 255, 0.55);
+    out property <color> bg-input: rgba(255, 255, 255, 0.40);
+    out property <color> text-primary: #2C3E50;
+    out property <color> text-secondary: #6B7B8D;
+    out property <color> border-glass: rgba(255, 255, 255, 0.30);
+    out property <color> border-accent: rgba(245, 166, 35, 0.3);
+    out property <length> radius-sm: 8px;
+    out property <length> radius-md: 12px;
+    out property <length> radius-lg: 16px;
+}
+
+// -------- 自定义图标：编辑（铅笔）--------
+// 像素风格竖铅笔：宽笔头 + 细笔身
+export component EditIcon inherits Rectangle {
+    width: 14px; height: 14px;
+    background: transparent;
+
+    // 笔头（橡皮擦）
+    cap := Rectangle { x: 3px; y: 0px; width: 8px; height: 3px; border-radius: 2px; background: AmberTheme.text-secondary; }
+    // 笔身
+    body := Rectangle { x: 4px; y: 3px; width: 6px; height: 7px; background: AmberTheme.text-secondary; }
+    // 笔尖（三角收缩）
+    t1 := Rectangle { x: 4px; y: 10px; width: 6px; height: 1px; background: AmberTheme.text-secondary; }
+    t2 := Rectangle { x: 5px; y: 11px; width: 4px; height: 1px; background: AmberTheme.text-secondary; }
+    t3 := Rectangle { x: 6px; y: 12px; width: 2px; height: 2px; background: AmberTheme.text-secondary; }
+}
+
+// -------- 自定义图标：删除（X）--------
+// 像素风格 X：两条对角线用小方块拼成
+export component DeleteIcon inherits Rectangle {
+    width: 14px; height: 14px;
+    background: transparent;
+
+    // 左上→右下对角线
+    d1 := Rectangle { x: 2px;  y: 1px;  width: 2px; height: 2px; background: AmberTheme.text-secondary; }
+    d2 := Rectangle { x: 4px;  y: 3px;  width: 2px; height: 2px; background: AmberTheme.text-secondary; }
+    d3 := Rectangle { x: 6px;  y: 5px;  width: 3px; height: 3px; background: AmberTheme.text-secondary; }
+    d4 := Rectangle { x: 9px;  y: 8px;  width: 2px; height: 2px; background: AmberTheme.text-secondary; }
+    d5 := Rectangle { x: 11px; y: 10px; width: 2px; height: 2px; background: AmberTheme.text-secondary; }
+
+    // 右上→左下对角线
+    d6 := Rectangle { x: 11px; y: 1px;  width: 2px; height: 2px; background: AmberTheme.text-secondary; }
+    d7 := Rectangle { x: 9px;  y: 3px;  width: 2px; height: 2px; background: AmberTheme.text-secondary; }
+    d8 := Rectangle { x: 6px;  y: 6px;  width: 3px; height: 3px; background: AmberTheme.text-secondary; }
+    d9 := Rectangle { x: 4px;  y: 9px;  width: 2px; height: 2px; background: AmberTheme.text-secondary; }
+    d10 := Rectangle { x: 2px; y: 11px; width: 2px; height: 2px; background: AmberTheme.text-secondary; }
+}
+
+// -------- 垃圾桶图标 --------
+export component TrashIcon inherits Rectangle {
+    in property <color> icon-color: AmberTheme.text-secondary;
+    width: 14px;
+    height: 14px;
+    background: transparent;
+
+    lid := Rectangle {
+        x: 3px;
+        y: 3px;
+        width: 8px;
+        height: 2px;
+        border-radius: 1px;
+        background: root.icon-color;
+    }
+
+    handle := Rectangle {
+        x: 5px;
+        y: 1px;
+        width: 4px;
+        height: 2px;
+        border-radius: 1px;
+        background: root.icon-color;
+    }
+
+    body := Rectangle {
+        x: 4px;
+        y: 5px;
+        width: 6px;
+        height: 7px;
+        border-radius: 1px;
+        background: root.icon-color;
+    }
+
+    body-cut := Rectangle {
+        x: 5px;
+        y: 6px;
+        width: 4px;
+        height: 5px;
+        border-radius: 1px;
+        background: rgba(255, 255, 255, 0.82);
+    }
+}
+
+// -------- 玻璃拟态按钮 --------
+export component GlassButton inherits Rectangle {
+    in-out property <string> label;
+    in property <bool> active: false;
+    in property <bool> icon-only: false;
+    callback clicked;
+
+    height: icon-only ? 32px : 36px;
+    min-width: icon-only ? 32px : 80px;
+    border-radius: AmberTheme.radius-sm;
+    background: active ? AmberTheme.accent
+               : ta.has-hover ? rgba(0, 0, 0, 0.06)
+               : rgba(0, 0, 0, 0.03);
+    border-width: 1px;
+    border-color: active ? AmberTheme.accent : AmberTheme.border-glass;
+
+    animate background { duration: 150ms; }
+    animate border-color { duration: 150ms; }
+
+    label-text := Text {
+        text: root.label;
+        color: active ? #1a1a2e : AmberTheme.text-primary;
+        font-size: 13px;
+        font-weight: 600;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        width: parent.width;
+        height: parent.height;
+    }
+
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+// -------- 玻璃拟态输入框 --------
+export component GlassInput inherits Rectangle {
+    in-out property <string> text;
+    in property <string> placeholder;
+    in property <bool> multi-line: false;
+    in-out property <bool> has-focus: false;
+    callback accepted(string);
+    callback edited(string);
+
+    height: multi-line ? 100px : 36px;
+    border-radius: AmberTheme.radius-sm;
+    background: rgba(255, 255, 255, 0.82);
+    border-width: 2px;
+    border-color: root.has-focus ? AmberTheme.accent : rgba(245, 166, 35, 0.48);
+
+    animate background { duration: 150ms; }
+    animate border-color { duration: 150ms; }
+
+    Rectangle {
+        x: 2px;
+        y: 2px;
+        width: parent.width - 4px;
+        height: parent.height - 4px;
+        border-radius: AmberTheme.radius-sm - 2px;
+        background: rgba(255, 255, 255, 0.22);
+    }
+
+    if !multi-line: TextInput {
+        x: 12px;
+        width: parent.width - 24px;
+        height: parent.height;
+        vertical-alignment: center;
+        color: AmberTheme.text-primary;
+        font-size: 14px;
+        single-line: true;
+        text <=> root.text;
+
+        accepted => { root.accepted(self.text); }
+        edited => { root.edited(self.text); }
+    }
+
+    if multi-line: TextInput {
+        x: 12px;
+        y: 8px;
+        width: parent.width - 24px;
+        height: parent.height - 16px;
+        color: AmberTheme.text-primary;
+        font-size: 14px;
+        wrap: word-wrap;
+        text <=> root.text;
+
+        edited => { root.edited(self.text); }
+    }
+
+    // 占位符
+    if root.text == "": Text {
+        x: 12px;
+        y: multi-line ? 8px : 0;
+        width: parent.width - 24px;
+        height: parent.height;
+        vertical-alignment: center;
+        text: root.placeholder;
+        color: #5D6470;
+        font-size: 14px;
+    }
+}
+
+// -------- 便签卡片（紧凑无标题）--------
+export component NoteCard inherits Rectangle {
+    in property <string> note-id;
+    in property <string> content;
+    callback edit-clicked(string);
+    callback delete-clicked(string);
+
+    height: max(28px, card-layout.preferred-height + 4px);
+    border-radius: AmberTheme.radius-sm;
+    background: AmberTheme.bg-card;
+    border-width: 1px;
+    border-color: AmberTheme.border-glass;
+
+    card-layout := HorizontalLayout {
+        x: 6px;
+        width: parent.width - 12px;
+        y: (parent.height - self.preferred-height) / 2;
+        spacing: 4px;
+        alignment: space-between;
+
+        // 内容文本占主体
+        content-text := Text {
+            text: root.content;
+            color: AmberTheme.text-primary;
+            font-size: 15px;
+            wrap: word-wrap;
+            overflow: elide;
+            max-height: 24px;
+            horizontal-stretch: 1;
+            vertical-alignment: center;
+        }
+
+        // 操作按钮（紧凑）
+        HorizontalLayout {
+            spacing: 1px;
+            alignment: center;
+
+            icon-edit-btn := Rectangle {
+                width: 18px; height: 18px;
+                border-radius: AmberTheme.radius-sm;
+                background: et.has-hover ? rgba(0, 0, 0, 0.06) : transparent;
+                animate background { duration: 150ms; }
+
+                edit-icon := EditIcon {
+                    x: 2px; y: 2px;
+                }
+                et := TouchArea {
+                    clicked => { root.edit-clicked(root.note-id); }
+                }
+            }
+
+            icon-delete-btn := Rectangle {
+                width: 18px; height: 18px;
+                border-radius: AmberTheme.radius-sm;
+                background: dt.has-hover ? rgba(0, 0, 0, 0.06) : transparent;
+                animate background { duration: 150ms; }
+
+                delete-icon := DeleteIcon {
+                    x: 2px; y: 2px;
+                }
+                dt := TouchArea {
+                    clicked => { root.delete-clicked(root.note-id); }
+                }
+            }
+        }
+    }
+}
+
+// -------- 闹钟卡片 --------
+export component AlarmCard inherits Rectangle {
+    in property <string> alarm-id;
+    in property <string> time;
+    in property <string> memo;
+    in property <bool> enabled;
+    callback toggle-clicked(string);
+    callback delete-clicked(string);
+
+    height: 72px;
+    border-radius: AmberTheme.radius-md;
+    background: AmberTheme.bg-card;
+    border-width: 1px;
+    border-color: enabled ? AmberTheme.border-accent : AmberTheme.border-glass;
+
+    HorizontalLayout {
+        x: 16px;
+        y: 12px;
+        width: parent.width - 32px;
+        height: parent.height - 24px;
+        spacing: 12px;
+        alignment: start;
+
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 4px;
+
+            Text {
+                text: root.time;
+                color: enabled ? AmberTheme.accent : AmberTheme.text-secondary;
+                font-size: 24px;
+                font-weight: 700;
+            }
+
+            Text {
+                text: root.memo == "" ? "无备注" : root.memo;
+                color: AmberTheme.text-secondary;
+                font-size: 12px;
+                overflow: elide;
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: center;
+
+            GlassButton {
+                label: enabled ? "🔂" : "🔃";
+                icon-only: true;
+                active: root.enabled;
+                clicked => { root.toggle-clicked(root.alarm-id); }
+            }
+
+            alarm-delete-btn := Rectangle {
+                width: 32px;
+                height: 32px;
+                border-radius: AmberTheme.radius-sm;
+                border-width: 1px;
+                border-color: delete-touch.has-hover ? rgba(220, 90, 90, 0.35) : AmberTheme.border-glass;
+                background: delete-touch.has-hover ? rgba(220, 90, 90, 0.14) : rgba(0, 0, 0, 0.03);
+
+                animate border-color { duration: 150ms; }
+                animate background { duration: 150ms; }
+
+                TrashIcon {
+                    x: 9px;
+                    y: 9px;
+                    icon-color: delete-touch.has-hover ? #C84A4A : AmberTheme.text-secondary;
+                }
+
+                delete-touch := TouchArea {
+                    clicked => { root.delete-clicked(root.alarm-id); }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,12 @@
+# Rust 编译产物
+target/
+
+# 临时文件
+QWeather-Icons-1.8.0/
+
+# 压缩包
+*.rar
+
+# IDE / 编辑器配置
+.*/
+!.git/

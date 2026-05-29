@@ -1,0 +1,115 @@
+在使用 Slint 开发无边框（no-frame: true）窗口时，由于隐藏了操作系统默认的标题栏，系统就不再提供默认的拖拽移动功能了。
+
+为了解决这个问题，我们需要在 Slint 界面中定义一个拖拽区域（通常是一个自定义的标题栏），然后通过 Rust 代码捕获鼠标的移动偏移量，并手动更新窗口的位置。
+
+以下是完整的解决方案：
+
+第一步：修改 .slint 文件
+我们需要在界面中添加一个 TouchArea（触摸/鼠标点击区域），并定义一个回调函数（callback），将鼠标拖拽时的偏移量传递给 Rust 后端。
+
+slint
+
+import { TouchArea } from "std-widgets.slint";
+
+export component AppWindow inherits Window {
+    // 开启无边框
+    no-frame: true;
+    width: 400px;
+    height: 300px;
+    background: #2c2c2c;
+
+    // 定义一个回调函数，接收 x 和 y 的移动偏移量 (类型为 length)
+    callback move-window(length, length);
+
+    // 假设我们在顶部做一个高 30px 的自定义标题栏用于拖拽
+    Rectangle {
+        y: 0;
+        width: 100%;
+        height: 30px;
+        background: #3c3c3c;
+
+        Text {
+            text: "我是自定义标题栏";
+            color: white;
+            x: 10px;
+            vertical-alignment: center;
+        }
+
+        // 放置一个 TouchArea 来捕获鼠标事件
+        TouchArea {
+            width: 100%;
+            height: 100%;
+            
+            // 当鼠标按住并移动时触发
+            moved => {
+                // self.mouse-x/y 是当前鼠标位置
+                // self.pressed-x/y 是鼠标按下时的初始位置
+                // 两者相减即为需要移动的偏移量
+                root.move-window(self.mouse-x - self.pressed-x, self.mouse-y - self.pressed-y);
+            }
+        }
+    }
+
+    // 你的其他 UI 内容可以放在这里...
+}
+第二步：在 Rust 中处理窗口移动
+在 Rust 代码中，我们需要监听这个 move-window 回调，并调用 window.set_position() 来移动实际的操作系统窗口。
+
+注意：Slint 传递过来的是逻辑像素（Logical Pixels），而操作系统窗口的坐标通常是物理像素（Physical Pixels），因此我们需要乘以缩放因子（Scale Factor）来适配高分辨率屏幕（如 4K 或 Mac 屏幕）。
+
+Rust
+
+use slint::PhysicalPosition;
+
+// 引入你编译的 slint 文件
+slint::slint!(import { AppWindow } from "ui/main.slint";);
+
+fn main() -> Result<(), slint::PlatformError> {
+    let ui = AppWindow::new()?;
+    
+    // 获取 ui 的弱引用，以便在闭包中使用
+    let ui_weak = ui.as_weak();
+
+    // 监听拖拽回调
+    ui.on_move_window(move |offset_x, offset_y| {
+        // 恢复 UI 实例
+        if let Some(ui) = ui_weak.unwrap() {
+            let window = ui.window();
+            
+            // 1. 获取当前窗口的物理坐标位置
+            let current_pos = window.position();
+            
+            // 2. 获取当前屏幕的 DPI 缩放因子
+            let scale_factor = window.scale_factor();
+            
+            // 3. 将 Slint 传来的逻辑偏移量转换为物理像素偏移量
+            let physical_offset_x = (offset_x * scale_factor) as i32;
+            let physical_offset_y = (offset_y * scale_factor) as i32;
+
+            // 4. 计算并设置新的窗口位置
+            window.set_position(PhysicalPosition::new(
+                current_pos.x + physical_offset_x,
+                current_pos.y + physical_offset_y,
+            ));
+        }
+    });
+
+    ui.run()
+}
+原理解释：为什么这样不会导致窗口乱飞？
+当窗口通过 set_position 移动后，窗口刚好跟上了鼠标的移动，此时在 Slint 内部的局部坐标系中，self.mouse-x 又会变回等于 self.pressed-x。如果鼠标继续移动，产生新的微小差值，窗口又会随之移动。这个逻辑形成了一个完美的闭环，手感和原生系统拖拽非常接近。
+
+⚠️ 注意事项（Linux Wayland 用户）
+如果你在 Linux 且使用 Wayland 桌面环境：
+Wayland 的安全协议严格禁止应用程序手动设置自身的绝对坐标（即 window.set_position 在纯 Wayland 环境下会被忽略，或者表现异常）。在 Windows、macOS 以及 Linux 的 X11 环境下，上述代码都可以完美运行。如果在 Wayland 下必须支持拖拽，可能需要等待 Slint 官方底层引入类似 winit 的原生 drag_window 协议支持。
+
+补充建议：别忘了关闭按钮
+因为设置了 no-frame: true，你也没有系统的“关闭”按钮了。记得在标题栏里加一个按钮，并在 Rust 中处理退出逻辑：
+Slint: callback close-window();
+Rust: ui.on_close_window(|| std::process::exit(0));
+
+
+
+
+
+
