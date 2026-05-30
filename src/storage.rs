@@ -50,6 +50,8 @@ pub struct AppData {
     pub window_h: i32,
     /// 上次关闭时是否置顶
     pub is_pinned: bool,
+    #[serde(default)]
+    pub is_click_through: bool,
 }
 
 // ==================== 存储路径 ====================
@@ -122,6 +124,7 @@ impl Default for AppData {
             window_w: -1,
             window_h: -1,
             is_pinned: true,
+            is_click_through: false,
         }
     }
 }

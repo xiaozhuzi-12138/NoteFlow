@@ -24,7 +24,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     ui_sync::sync_all(&ui, &app_data.borrow());
     handlers::bind_all(&ui, app_data.clone());
 
-    let (_tray_manager, tray_rx) = match tray::TrayManager::create() {
+    let (_tray_manager, tray_rx) = match tray::TrayManager::create(app_data.borrow().is_click_through) {
         Ok((manager, rx)) => (Some(manager), Some(rx)),
         Err(e) => {
             eprintln!("系统托盘创建失败: {}", e);
@@ -33,7 +33,13 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     timers::start_alarm_checker(&ui, app_data.clone(), &mut background_timers);
-    timers::start_tray_listener(&ui, app_data.clone(), tray_rx, &mut background_timers);
+    timers::start_tray_listener(
+        &ui,
+        app_data.clone(),
+        tray_rx,
+        _tray_manager.as_ref(),
+        &mut background_timers,
+    );
     timers::start_auto_save(&ui, app_data.clone(), &mut background_timers);
 
     window::restore_window_state(&ui, &app_data.borrow());

@@ -48,6 +48,14 @@ pub fn save_window_state(ui: &AppWindow, data: &SharedAppData) {
     data.save();
 }
 
+pub fn set_click_through(_ui: &AppWindow, data: &SharedAppData, enabled: bool) {
+    apply_click_through(APP_TITLE, enabled);
+
+    let mut data = data.borrow_mut();
+    data.is_click_through = enabled;
+    data.save();
+}
+
 /// 从上次保存的位置恢复窗口；没有记录时默认放到屏幕右上角。
 pub fn restore_window_state(ui: &AppWindow, data: &storage::AppData) {
     let (ww, wh) = if data.window_w > 0 && data.window_h > 0 {
@@ -67,6 +75,7 @@ pub fn restore_window_state(ui: &AppWindow, data: &storage::AppData) {
     }
 
     let is_pinned = data.is_pinned;
+    let is_click_through = data.is_click_through;
     ui.set_is_pinned(is_pinned);
 
     // 延迟设置置顶，确保窗口已完全创建，FindWindowW 能找到它
@@ -74,6 +83,7 @@ pub fn restore_window_state(ui: &AppWindow, data: &storage::AppData) {
     slint::Timer::single_shot(std::time::Duration::from_millis(100), move || {
         if let Some(ui) = ui_weak.upgrade() {
             set_topmost(APP_TITLE, ui.get_is_pinned());
+            apply_click_through(APP_TITLE, is_click_through);
         }
     });
 }
@@ -150,6 +160,41 @@ pub fn set_topmost(title: &str, topmost: bool) {
 
 #[cfg(not(target_os = "windows"))]
 pub fn set_topmost(_title: &str, _topmost: bool) {}
+
+#[cfg(target_os = "windows")]
+pub fn apply_click_through(title: &str, enabled: bool) {
+    use windows::Win32::UI::WindowsAndMessaging::{
+        FindWindowW, GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE,
+        SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_EX_LAYERED, WS_EX_TRANSPARENT,
+    };
+
+    let title_wide = to_wide(title);
+    unsafe {
+        if let Ok(hwnd) = FindWindowW(None, windows::core::PCWSTR(title_wide.as_ptr())) {
+            let mut ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32;
+            let mask = WS_EX_LAYERED.0 | WS_EX_TRANSPARENT.0;
+            if enabled {
+                ex_style |= mask;
+            } else {
+                ex_style &= !mask;
+            }
+
+            let _ = SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex_style as isize);
+            let _ = SetWindowPos(
+                hwnd,
+                None,
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED,
+            );
+        }
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn apply_click_through(_title: &str, _enabled: bool) {}
 
 #[cfg(target_os = "windows")]
 fn focus_window(title: &str, topmost: bool) {

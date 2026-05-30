@@ -55,6 +55,7 @@ pub fn start_tray_listener(
     ui: &AppWindow,
     data: SharedAppData,
     tray_rx: Option<mpsc::Receiver<tray::TrayEvent>>,
+    tray_manager: Option<&tray::TrayManager>,
     timers: &mut Vec<Timer>,
 ) {
     let Some(rx) = tray_rx else {
@@ -62,6 +63,7 @@ pub fn start_tray_listener(
     };
 
     let ui_weak = ui.as_weak();
+    let tray_manager = tray_manager.map(|manager| manager.clone_state_handle());
     let tray_timer = Timer::default();
     tray_timer.start(
         TimerMode::Repeated,
@@ -78,6 +80,14 @@ pub fn start_tray_listener(
                     tray::TrayEvent::ShowWindow => {
                         if let Some(ui) = ui_weak.upgrade() {
                             window::show_and_focus(&ui);
+                        }
+                    }
+                    tray::TrayEvent::SetClickThrough(enabled) => {
+                        if let Some(ui) = ui_weak.upgrade() {
+                            window::set_click_through(&ui, &data, enabled);
+                        }
+                        if let Some(manager) = &tray_manager {
+                            manager.store(enabled, std::sync::atomic::Ordering::Relaxed);
                         }
                     }
                 }
