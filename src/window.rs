@@ -82,6 +82,7 @@ pub fn restore_window_state(ui: &AppWindow, data: &storage::AppData) {
     let ui_weak = ui.as_weak();
     slint::Timer::single_shot(std::time::Duration::from_millis(100), move || {
         if let Some(ui) = ui_weak.upgrade() {
+            configure_tray_only_window(APP_TITLE);
             set_topmost(APP_TITLE, ui.get_is_pinned());
             apply_click_through(APP_TITLE, is_click_through);
         }
@@ -195,6 +196,39 @@ pub fn apply_click_through(title: &str, enabled: bool) {
 
 #[cfg(not(target_os = "windows"))]
 pub fn apply_click_through(_title: &str, _enabled: bool) {}
+
+#[cfg(target_os = "windows")]
+pub fn configure_tray_only_window(title: &str) {
+    use windows::Win32::UI::WindowsAndMessaging::{
+        FindWindowW, GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE,
+        SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_EX_APPWINDOW,
+        WS_EX_TOOLWINDOW,
+    };
+
+    let title_wide = to_wide(title);
+    unsafe {
+        if let Ok(hwnd) = FindWindowW(None, windows::core::PCWSTR(title_wide.as_ptr())) {
+            let ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32;
+            let tray_only_style = (ex_style | WS_EX_TOOLWINDOW.0) & !WS_EX_APPWINDOW.0;
+
+            if tray_only_style != ex_style {
+                let _ = SetWindowLongPtrW(hwnd, GWL_EXSTYLE, tray_only_style as isize);
+                let _ = SetWindowPos(
+                    hwnd,
+                    None,
+                    0,
+                    0,
+                    0,
+                    0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED,
+                );
+            }
+        }
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn configure_tray_only_window(_title: &str) {}
 
 #[cfg(target_os = "windows")]
 fn focus_window(title: &str, topmost: bool) {
