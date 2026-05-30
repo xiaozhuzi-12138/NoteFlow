@@ -27,9 +27,9 @@ struct ActiveAlarmAlert {
     id: u64,
     window: AlarmAlertWindow,
     audio: Rc<RefCell<Option<alarm_audio::AlarmAudio>>>,
-    /// 闹钟在 AppData 中的存储 ID，用于关闭时删除。
+    /// 闹钟在 AppData 中的存储 ID，用于关闭时关闭激活状态。
     alarm_storage_id: String,
-    /// 共享数据句柄，用于关闭时删除闹钟并同步 UI。
+    /// 共享数据句柄，用于关闭时更新闹钟状态并同步 UI。
     data: SharedAppData,
     /// 主窗口弱引用，用于同步 UI。
     ui_weak: slint::Weak<AppWindow>,
@@ -170,10 +170,10 @@ fn dismiss_alert(
     });
 
     if removed {
-        // 删除闹钟数据并同步 UI
+        // 关闭闹钟激活状态并同步 UI
         {
             let mut data = data.borrow_mut();
-            data.delete_alarm(alarm_storage_id);
+            data.disable_alarm(alarm_storage_id);
         }
         if let Some(ui) = ui_weak.upgrade() {
             ui_sync::sync_alarms(&ui, &data.borrow());

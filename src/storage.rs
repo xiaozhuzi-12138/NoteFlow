@@ -229,4 +229,16 @@ impl AppData {
             false
         }
     }
+
+    /// 关闭指定闹钟的激活状态，返回是否实际修改。
+    pub fn disable_alarm(&mut self, id: &str) -> bool {
+        if let Some(alarm) = self.alarms.iter_mut().find(|a| a.id == id) {
+            if alarm.enabled {
+                alarm.enabled = false;
+                self.save();
+                return true;
+            }
+        }
+        false
+    }
 }
