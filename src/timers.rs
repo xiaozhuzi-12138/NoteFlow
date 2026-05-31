@@ -90,6 +90,14 @@ pub fn start_tray_listener(
                             manager.store(enabled, std::sync::atomic::Ordering::Relaxed);
                         }
                     }
+                    tray::TrayEvent::ToggleClickThrough => {
+                        if let Some(ui) = ui_weak.upgrade() {
+                            let enabled = window::toggle_click_through(&ui, &data);
+                            if let Some(manager) = &tray_manager {
+                                manager.store(enabled, std::sync::atomic::Ordering::Relaxed);
+                            }
+                        }
+                    }
                 }
             }
         },

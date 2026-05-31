@@ -147,6 +147,16 @@ fn bind_window_handlers(ui: &AppWindow, data: SharedAppData) {
 
     {
         let ui_weak = ui.as_weak();
+        let data = data.clone();
+        ui.on_toggle_click_through(move |enabled| {
+            if let Some(ui) = ui_weak.upgrade() {
+                window::set_click_through(&ui, &data, enabled);
+            }
+        });
+    }
+
+    {
+        let ui_weak = ui.as_weak();
         ui.on_move_window(move |offset_x, offset_y| {
             if let Some(ui) = ui_weak.upgrade() {
                 window::move_window(&ui, offset_x, offset_y);

@@ -8,6 +8,7 @@ use slint::{ModelRc, SharedString, VecModel};
 
 /// 同步所有可视数据到界面。
 pub fn sync_all(ui: &AppWindow, data: &storage::AppData) {
+    ui.set_is_click_through(data.is_click_through);
     sync_notes(ui, data);
     sync_alarms(ui, data);
 }

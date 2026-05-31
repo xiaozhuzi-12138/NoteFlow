@@ -101,6 +101,84 @@ export component TrashIcon inherits Rectangle {
     }
 }
 
+// -------- 鼠标穿透图标 --------
+// 中间指针 + 外圈，表示“点击穿过窗口”
+export component ClickThroughIcon inherits Rectangle {
+    in property <color> icon-color: AmberTheme.text-secondary;
+    width: 14px;
+    height: 14px;
+    background: transparent;
+
+    ring-top := Rectangle {
+        x: 4px;
+        y: 1px;
+        width: 6px;
+        height: 2px;
+        border-radius: 1px;
+        background: root.icon-color;
+    }
+
+    ring-bottom := Rectangle {
+        x: 4px;
+        y: 11px;
+        width: 6px;
+        height: 2px;
+        border-radius: 1px;
+        background: root.icon-color;
+    }
+
+    ring-left := Rectangle {
+        x: 1px;
+        y: 4px;
+        width: 2px;
+        height: 6px;
+        border-radius: 1px;
+        background: root.icon-color;
+    }
+
+    ring-right := Rectangle {
+        x: 11px;
+        y: 4px;
+        width: 2px;
+        height: 6px;
+        border-radius: 1px;
+        background: root.icon-color;
+    }
+
+    cursor-stem := Rectangle {
+        x: 6px;
+        y: 3px;
+        width: 2px;
+        height: 6px;
+        background: root.icon-color;
+    }
+
+    cursor-left := Rectangle {
+        x: 5px;
+        y: 4px;
+        width: 2px;
+        height: 2px;
+        background: root.icon-color;
+    }
+
+    cursor-right := Rectangle {
+        x: 7px;
+        y: 6px;
+        width: 2px;
+        height: 2px;
+        background: root.icon-color;
+    }
+
+    cursor-tip := Rectangle {
+        x: 5px;
+        y: 9px;
+        width: 4px;
+        height: 2px;
+        border-radius: 1px;
+        background: root.icon-color;
+    }
+}
+
 // -------- 玻璃拟态按钮 --------
 export component GlassButton inherits Rectangle {
     in-out property <string> label;

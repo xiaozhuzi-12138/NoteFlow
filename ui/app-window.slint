@@ -3,7 +3,7 @@
 //  顶部标题 + 置顶/最小化/关闭 + 便签/闹钟切换 + 内容区
 // ============================================================
 
-import { AmberTheme, GlassButton } from "widgets.slint";
+import { AmberTheme, ClickThroughIcon, GlassButton } from "widgets.slint";
 import { NotesPage } from "notes-page.slint";
 import { AlarmPage } from "alarm-page.slint";
 export { AlarmAlertWindow } from "alarm-alert-window.slint";
@@ -25,6 +25,7 @@ export component AppWindow inherits Window {
 
     // 置顶状态
     in-out property <bool> is-pinned: true;
+    in-out property <bool> is-click-through: false;
 
     // 当前页面：0 = 便签，1 = 闹钟
     in-out property <int> current-page: 0;
@@ -54,6 +55,7 @@ export component AppWindow inherits Window {
     callback toggle-alarm(string);
 
     callback toggle-pin(bool);
+    callback toggle-click-through(bool);
     callback request-close();
     callback request-minimize();
     callback move-window(length, length);
@@ -108,6 +110,33 @@ export component AppWindow inherits Window {
 
                     HorizontalLayout {
                         spacing: 4px;
+
+                        click-through-btn := Rectangle {
+                            width: 32px;
+                            height: 32px;
+                            border-radius: AmberTheme.radius-sm;
+                            border-width: 1px;
+                            border-color: root.is-click-through ? AmberTheme.accent : AmberTheme.border-glass;
+                            background: root.is-click-through ? AmberTheme.accent
+                                      : click-through-touch.has-hover ? rgba(0, 0, 0, 0.06)
+                                      : rgba(0, 0, 0, 0.03);
+
+                            animate border-color { duration: 150ms; }
+                            animate background { duration: 150ms; }
+
+                            ClickThroughIcon {
+                                x: 9px;
+                                y: 9px;
+                                icon-color: root.is-click-through ? #1a1a2e : AmberTheme.text-primary;
+                            }
+
+                            click-through-touch := TouchArea {
+                                clicked => {
+                                    root.is-click-through = !root.is-click-through;
+                                    root.toggle-click-through(root.is-click-through);
+                                }
+                            }
+                        }
 
                         // 置顶按钮
                         GlassButton {

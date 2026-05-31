@@ -11,10 +11,12 @@ use windows::core::PCWSTR;
 use windows::Win32::Foundation::{BOOL, HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows::Win32::Graphics::Gdi::*;
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, MOD_CONTROL};
 use windows::Win32::UI::Shell::*;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
 const WM_TRAY_ICON: u32 = WM_USER + 1;
+const HOTKEY_ID_TOGGLE_CLICK_THROUGH: i32 = 3001;
 const TRAY_UID: u32 = 1001;
 const CMD_ENABLE_CLICK_THROUGH: usize = 2001;
 const CMD_DISABLE_CLICK_THROUGH: usize = 2002;
@@ -25,6 +27,7 @@ pub enum TrayEvent {
     Quit,
     ShowWindow,
     SetClickThrough(bool),
+    ToggleClickThrough,
 }
 
 pub struct TrayManager {
@@ -87,6 +90,7 @@ impl TrayManager {
         };
 
         add_tray_icon(hwnd, hicon)?;
+        register_hotkeys(hwnd)?;
 
         Ok((
             Self {
@@ -163,8 +167,26 @@ unsafe extern "system" fn tray_wnd_proc(
             }
             LRESULT(0)
         }
+        WM_HOTKEY => {
+            if wparam.0 as i32 == HOTKEY_ID_TOGGLE_CLICK_THROUGH {
+                send_tray_event(hwnd, TrayEvent::ToggleClickThrough);
+            }
+            LRESULT(0)
+        }
         _ => DefWindowProcW(hwnd, msg, wparam, lparam),
     }
+}
+
+fn register_hotkeys(hwnd: HWND) -> Result<(), Box<dyn std::error::Error>> {
+    unsafe {
+        RegisterHotKey(
+            hwnd,
+            HOTKEY_ID_TOGGLE_CLICK_THROUGH,
+            MOD_CONTROL,
+            u32::from(b'L'),
+        )?;
+    }
+    Ok(())
 }
 
 unsafe fn tray_context_ptr(hwnd: HWND) -> *mut TrayContext {

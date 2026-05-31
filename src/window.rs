@@ -50,10 +50,17 @@ pub fn save_window_state(ui: &AppWindow, data: &SharedAppData) {
 
 pub fn set_click_through(_ui: &AppWindow, data: &SharedAppData, enabled: bool) {
     apply_click_through(APP_TITLE, enabled);
+    _ui.set_is_click_through(enabled);
 
     let mut data = data.borrow_mut();
     data.is_click_through = enabled;
     data.save();
+}
+
+pub fn toggle_click_through(ui: &AppWindow, data: &SharedAppData) -> bool {
+    let enabled = !data.borrow().is_click_through;
+    set_click_through(ui, data, enabled);
+    enabled
 }
 
 /// 从上次保存的位置恢复窗口；没有记录时默认放到屏幕右上角。
