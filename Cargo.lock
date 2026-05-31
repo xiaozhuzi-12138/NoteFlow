@@ -4545,7 +4545,6 @@ name = "sticky-note"
 version = "0.1.0"
 dependencies = [
  "chrono",
- "image",
  "native-dialog",
  "serde",
  "serde_json",

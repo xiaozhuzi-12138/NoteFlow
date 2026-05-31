@@ -263,6 +263,65 @@ fn encode_wide(s: &str) -> Vec<u16> {
 }
 
 fn make_tray_hicon() -> Result<HICON, Box<dyn std::error::Error>> {
+    if let Some(hicon) = try_load_embedded_app_icon() {
+        return Ok(hicon);
+    }
+
+    if let Some(hicon) = try_load_icon_from_assets() {
+        return Ok(hicon);
+    }
+
+    // Fall back to the old procedural icon so tray creation never blocks startup.
+    make_fallback_tray_hicon()
+}
+
+fn try_load_embedded_app_icon() -> Option<HICON> {
+    let hinstance: windows::Win32::Foundation::HINSTANCE =
+        unsafe { GetModuleHandleW(None).ok()? }.into();
+    let handle = unsafe {
+        LoadImageW(
+            hinstance,
+            PCWSTR(1 as *const u16),
+            IMAGE_ICON,
+            32,
+            32,
+            LR_DEFAULTCOLOR,
+        )
+    }
+    .ok()?;
+
+    let hicon = HICON(handle.0);
+    if hicon.0.is_null() {
+        None
+    } else {
+        Some(hicon)
+    }
+}
+
+fn try_load_icon_from_assets() -> Option<HICON> {
+    let icon_path = std::env::current_dir().ok()?.join("assets").join("icon.ico");
+    let icon_path_wide = encode_wide(icon_path.to_str()?);
+    let handle = unsafe {
+        LoadImageW(
+            windows::Win32::Foundation::HINSTANCE::default(),
+            PCWSTR(icon_path_wide.as_ptr()),
+            IMAGE_ICON,
+            32,
+            32,
+            LR_DEFAULTCOLOR | LR_LOADFROMFILE,
+        )
+    }
+    .ok()?;
+
+    let hicon = HICON(handle.0);
+    if hicon.0.is_null() {
+        None
+    } else {
+        Some(hicon)
+    }
+}
+
+fn make_fallback_tray_hicon() -> Result<HICON, Box<dyn std::error::Error>> {
     let w = 32i32;
     let h = 32i32;
     let margin = 4;
