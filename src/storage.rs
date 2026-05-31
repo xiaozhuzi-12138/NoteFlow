@@ -23,6 +23,12 @@ pub struct Note {
 pub struct Alarm {
     /// 闹钟唯一 ID。
     pub id: String,
+    /// 年份。
+    pub year: i32,
+    /// 月份，范围 1-12。
+    pub month: u32,
+    /// 日期，范围 1-31。
+    pub day: u32,
     /// 24 小时制小时。
     pub hour: u32,
     /// 分钟。
@@ -179,9 +185,20 @@ impl AppData {
 
 impl AppData {
     /// 新增闹钟并返回生成的 ID。
-    pub fn add_alarm(&mut self, hour: u32, minute: u32, memo: String) -> String {
+    pub fn add_alarm(
+        &mut self,
+        year: i32,
+        month: u32,
+        day: u32,
+        hour: u32,
+        minute: u32,
+        memo: String,
+    ) -> String {
         let alarm = Alarm {
             id: Uuid::new_v4().to_string(),
+            year,
+            month,
+            day,
             hour,
             minute,
             memo,
@@ -194,8 +211,20 @@ impl AppData {
     }
 
     /// 更新指定闹钟，返回是否找到目标。
-    pub fn update_alarm(&mut self, id: &str, hour: u32, minute: u32, memo: String) -> bool {
+    pub fn update_alarm(
+        &mut self,
+        id: &str,
+        year: i32,
+        month: u32,
+        day: u32,
+        hour: u32,
+        minute: u32,
+        memo: String,
+    ) -> bool {
         if let Some(alarm) = self.alarms.iter_mut().find(|a| a.id == id) {
+            alarm.year = year;
+            alarm.month = month;
+            alarm.day = day;
             alarm.hour = hour;
             alarm.minute = minute;
             alarm.memo = memo;

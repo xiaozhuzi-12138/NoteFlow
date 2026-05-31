@@ -25,11 +25,20 @@ pub fn start_alarm_checker(ui: &AppWindow, data: SharedAppData, timers: &mut Vec
 
             let current_hour = now.hour();
             let current_minute = now.minute();
+            let current_year = now.year();
+            let current_month = now.month();
+            let current_day = now.day();
 
             let data_ref = data.borrow();
             let mut triggered = false;
             for alarm in &data_ref.alarms {
-                if alarm.enabled && alarm.hour == current_hour && alarm.minute == current_minute {
+                if alarm.enabled
+                    && alarm.year == current_year
+                    && alarm.month == current_month
+                    && alarm.day == current_day
+                    && alarm.hour == current_hour
+                    && alarm.minute == current_minute
+                {
                     triggered = true;
                     alarm_alert::show_alarm_alert(
                         alarm.hour,
@@ -96,6 +105,11 @@ pub fn start_tray_listener(
                             if let Some(manager) = &tray_manager {
                                 manager.store(enabled, std::sync::atomic::Ordering::Relaxed);
                             }
+                        }
+                    }
+                    tray::TrayEvent::TogglePinned => {
+                        if let Some(ui) = ui_weak.upgrade() {
+                            window::toggle_pinned(&ui, &data);
                         }
                     }
                 }

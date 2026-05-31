@@ -44,15 +44,25 @@ export component AppWindow inherits Window {
     in-out property <[string]> alarm-times: [];
     in-out property <[string]> alarm-memos: [];
     in-out property <[bool]> alarm-enables: [];
+    in-out property <bool> alarm-editor-open: false;
+    in-out property <string> alarm-editor-id: "";
+    in-out property <string> alarm-editor-year: "2026";
+    in-out property <string> alarm-editor-month: "1";
+    in-out property <string> alarm-editor-day: "1";
+    in-out property <string> alarm-editor-hour: "0";
+    in-out property <string> alarm-editor-minute: "0";
+    in-out property <string> alarm-editor-memo: "";
 
     // ---- 回调：Rust 处理 ----
     callback save-note(string, string);
     callback delete-note(string);
     callback load-note-for-edit(string);
 
-    callback save-alarm(string, string, string, string);
+    callback save-alarm(string, string, string, string, string, string, string);
     callback delete-alarm(string);
     callback toggle-alarm(string);
+    callback prepare-new-alarm();
+    callback adjust-alarm-field(string, int);
 
     callback toggle-pin(bool);
     callback toggle-click-through(bool);
@@ -104,6 +114,19 @@ export component AppWindow inherits Window {
                             color: AmberTheme.accent;
                             font-size: 15px;
                             font-weight: 700;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    HorizontalLayout {
+                        horizontal-stretch: 1;
+                        alignment: center;
+
+                        Text {
+                            text: "Ctrl+K 开关置顶 / Ctrl+L 开关穿透";
+                            color: AmberTheme.text-secondary;
+                            font-size: 11px;
+                            horizontal-alignment: center;
                             vertical-alignment: center;
                         }
                     }
@@ -217,9 +240,21 @@ export component AppWindow inherits Window {
                     alarm-times <=> root.alarm-times;
                     alarm-memos <=> root.alarm-memos;
                     alarm-enables <=> root.alarm-enables;
-                    save-alarm(id, hour, minute, memo) => { root.save-alarm(id, hour, minute, memo); }
+                    editor-visible <=> root.alarm-editor-open;
+                    edit-id <=> root.alarm-editor-id;
+                    edit-year <=> root.alarm-editor-year;
+                    edit-month <=> root.alarm-editor-month;
+                    edit-day <=> root.alarm-editor-day;
+                    edit-hour <=> root.alarm-editor-hour;
+                    edit-minute <=> root.alarm-editor-minute;
+                    edit-memo <=> root.alarm-editor-memo;
+                    save-alarm(id, year, month, day, hour, minute, memo) => {
+                        root.save-alarm(id, year, month, day, hour, minute, memo);
+                    }
                     delete-alarm(id) => { root.delete-alarm(id); }
                     toggle-alarm(id) => { root.toggle-alarm(id); }
+                    prepare-new-alarm() => { root.prepare-new-alarm(); }
+                    adjust-alarm-field(field, delta) => { root.adjust-alarm-field(field, delta); }
                 }
             }
         }

@@ -63,6 +63,21 @@ pub fn toggle_click_through(ui: &AppWindow, data: &SharedAppData) -> bool {
     enabled
 }
 
+pub fn set_pinned(ui: &AppWindow, data: &SharedAppData, pinned: bool) {
+    set_topmost(APP_TITLE, pinned);
+    ui.set_is_pinned(pinned);
+
+    let mut data = data.borrow_mut();
+    data.is_pinned = pinned;
+    data.save();
+}
+
+pub fn toggle_pinned(ui: &AppWindow, data: &SharedAppData) -> bool {
+    let pinned = !ui.get_is_pinned();
+    set_pinned(ui, data, pinned);
+    pinned
+}
+
 /// 从上次保存的位置恢复窗口；没有记录时默认放到屏幕右上角。
 pub fn restore_window_state(ui: &AppWindow, data: &storage::AppData) {
     let (ww, wh) = if data.window_w > 0 && data.window_h > 0 {

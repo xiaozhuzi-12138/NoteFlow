@@ -32,7 +32,13 @@ pub fn sync_alarms(ui: &AppWindow, data: &storage::AppData) {
     let times: Vec<SharedString> = data
         .alarms
         .iter()
-        .map(|a| format!("{:02}:{:02}", a.hour, a.minute).into())
+        .map(|a| {
+            format!(
+                "{:04}-{:02}-{:02} {:02}:{:02}",
+                a.year, a.month, a.day, a.hour, a.minute
+            )
+            .into()
+        })
         .collect();
     let memos: Vec<SharedString> = data
         .alarms

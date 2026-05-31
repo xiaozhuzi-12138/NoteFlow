@@ -4,90 +4,175 @@
 
 import { AmberTheme, GlassButton, GlassInput, AlarmCard } from "widgets.slint";
 
-// -------- 闹钟编辑弹窗 --------
+component StepperInput inherits Rectangle {
+    in-out property <string> value;
+    in property <string> label;
+    callback increase();
+    callback decrease();
+
+    height: 96px;
+    border-radius: AmberTheme.radius-md;
+    background: rgba(255, 255, 255, 0.80);
+    border-width: 1px;
+    border-color: AmberTheme.border-glass;
+
+    VerticalLayout {
+        x: 6px;
+        y: 6px;
+        width: parent.width - 12px;
+        height: parent.height - 12px;
+        spacing: 4px;
+        alignment: center;
+
+        Text {
+            text: root.label;
+            color: AmberTheme.text-secondary;
+            font-size: 11px;
+            horizontal-alignment: center;
+        }
+
+        GlassButton {
+            label: "+";
+            icon-only: true;
+            width: 28px;
+            height: 20px;
+            clicked => { root.increase(); }
+        }
+
+        GlassInput {
+            width: parent.width;
+            height: 30px;
+            text <=> root.value;
+            placeholder: "";
+        }
+
+        GlassButton {
+            label: "-";
+            icon-only: true;
+            width: 28px;
+            height: 20px;
+            clicked => { root.decrease(); }
+        }
+    }
+}
+
 export component AlarmEditor inherits Rectangle {
     in-out property <string> alarm-id;
-    in-out property <string> hour-text;
-    in-out property <string> minute-text;
+    in-out property <string> year-value: "2026";
+    in-out property <string> month-value: "1";
+    in-out property <string> day-value: "1";
+    in-out property <string> hour-value: "0";
+    in-out property <string> minute-value: "0";
     in-out property <string> memo-text;
-    callback save-clicked(string, string, string, string);
+    callback save-clicked(string, string, string, string, string, string, string);
     callback cancel-clicked();
+    callback adjust-field(string, int);
 
     background: rgba(180, 200, 220, 0.25);
 
-    // 居中卡片
     card := Rectangle {
         x: (parent.width - self.width) / 2;
-        y: (parent.height - self.height) / 2;
-        width: min(parent.width - 40px, 340px);
-        height: layout.preferred-height + 40px;
+        y: max(12px, (parent.height - self.height) / 2);
+        width: min(parent.width - 24px, 396px);
+        height: min(parent.height - 24px, content-layout.preferred-height + 28px);
         border-radius: AmberTheme.radius-lg;
-        background: rgba(255, 255, 255, 0.92);
+        background: rgba(255, 255, 255, 0.94);
         border-width: 1px;
         border-color: AmberTheme.border-glass;
 
-        layout := VerticalLayout {
-            x: 20px;
-            y: 20px;
-            width: parent.width - 40px;
-            spacing: 14px;
+        scroller := Flickable {
+            x: 14px;
+            y: 14px;
+            width: parent.width - 28px;
+            height: parent.height - 28px;
+            viewport-height: content-layout.preferred-height;
 
-            Text {
-                text: root.alarm-id == "" ? "新建闹钟" : "编辑闹钟";
-                color: AmberTheme.accent;
-                font-size: 16px;
-                font-weight: 700;
-            }
-
-            // 时间输入行
-            HorizontalLayout {
-                spacing: 8px;
-                alignment: center;
-
-                hour-input := GlassInput {
-                    text <=> root.hour-text;
-                    placeholder: "时";
-                    width: 80px;
-                }
+            content-layout := VerticalLayout {
+                width: parent.width;
+                spacing: 12px;
 
                 Text {
-                    text: ":";
+                    text: root.alarm-id == "" ? "新建闹钟" : "编辑闹钟";
                     color: AmberTheme.accent;
-                    font-size: 28px;
+                    font-size: 16px;
                     font-weight: 700;
-                    vertical-alignment: center;
                 }
 
-                minute-input := GlassInput {
-                    text <=> root.minute-text;
-                    placeholder: "分";
-                    width: 80px;
+                HorizontalLayout {
+                    spacing: 6px;
+                    alignment: center;
+
+                    StepperInput {
+                        width: 76px;
+                        label: "年";
+                        value <=> root.year-value;
+                        increase() => { root.adjust-field("year", 1); }
+                        decrease() => { root.adjust-field("year", -1); }
+                    }
+
+                    StepperInput {
+                        width: 58px;
+                        label: "月";
+                        value <=> root.month-value;
+                        increase() => { root.adjust-field("month", 1); }
+                        decrease() => { root.adjust-field("month", -1); }
+                    }
+
+                    StepperInput {
+                        width: 58px;
+                        label: "日";
+                        value <=> root.day-value;
+                        increase() => { root.adjust-field("day", 1); }
+                        decrease() => { root.adjust-field("day", -1); }
+                    }
+
+                    StepperInput {
+                        width: 58px;
+                        label: "时";
+                        value <=> root.hour-value;
+                        increase() => { root.adjust-field("hour", 1); }
+                        decrease() => { root.adjust-field("hour", -1); }
+                    }
+
+                    StepperInput {
+                        width: 58px;
+                        label: "分";
+                        value <=> root.minute-value;
+                        increase() => { root.adjust-field("minute", 1); }
+                        decrease() => { root.adjust-field("minute", -1); }
+                    }
                 }
-            }
 
-            // 备忘录
-            memo-input := GlassInput {
-                text <=> root.memo-text;
-                placeholder: "备忘录（可选）";
-                multi-line: true;
-                height: 80px;
-            }
-
-            // 按钮行
-            HorizontalLayout {
-                spacing: 10px;
-                alignment: end;
-
-                GlassButton {
-                    label: "取消";
-                    clicked => { root.cancel-clicked(); }
+                memo-input := GlassInput {
+                    text <=> root.memo-text;
+                    placeholder: "备注（可选）";
+                    multi-line: true;
+                    height: 64px;
                 }
 
-                GlassButton {
-                    label: "✓ 保存";
-                    active: true;
-                    clicked => {
-                        root.save-clicked(root.alarm-id, root.hour-text, root.minute-text, root.memo-text);
+                HorizontalLayout {
+                    spacing: 10px;
+                    alignment: end;
+
+                    GlassButton {
+                        label: "取消";
+                        clicked => { root.cancel-clicked(); }
+                    }
+
+                    GlassButton {
+                        label: "保存";
+                        active: true;
+                        clicked => {
+                            root.save-clicked(
+                                root.alarm-id,
+                                root.year-value,
+                                root.month-value,
+                                root.day-value,
+                                root.hour-value,
+                                root.minute-value,
+                                root.memo-text
+                            );
+                        }
                     }
                 }
             }
@@ -95,23 +180,26 @@ export component AlarmEditor inherits Rectangle {
     }
 }
 
-// -------- 闹钟页面 --------
 export component AlarmPage inherits Rectangle {
     in-out property <[string]> alarm-ids;
     in-out property <[string]> alarm-times;
     in-out property <[string]> alarm-memos;
     in-out property <[bool]> alarm-enables;
 
-    // 编辑器状态
     in-out property <bool> editor-visible: false;
     in-out property <string> edit-id: "";
-    in-out property <string> edit-hour: "";
-    in-out property <string> edit-minute: "";
+    in-out property <string> edit-year: "2026";
+    in-out property <string> edit-month: "1";
+    in-out property <string> edit-day: "1";
+    in-out property <string> edit-hour: "0";
+    in-out property <string> edit-minute: "0";
     in-out property <string> edit-memo: "";
 
-    callback save-alarm(string, string, string, string);
+    callback save-alarm(string, string, string, string, string, string, string);
     callback delete-alarm(string);
     callback toggle-alarm(string);
+    callback prepare-new-alarm();
+    callback adjust-alarm-field(string, int);
 
     background: transparent;
 
@@ -119,24 +207,16 @@ export component AlarmPage inherits Rectangle {
         spacing: 12px;
         padding: 16px;
 
-        // 添加按钮行
         HorizontalLayout {
             alignment: end;
 
             GlassButton {
                 label: "+ 新建闹钟";
                 active: true;
-                clicked => {
-                    root.editor-visible = true;
-                    root.edit-id = "";
-                    root.edit-hour = "";
-                    root.edit-minute = "";
-                    root.edit-memo = "";
-                }
+                clicked => { root.prepare-new-alarm(); }
             }
         }
 
-        // 闹钟列表
         Flickable {
             vertical-stretch: 1;
             viewport-height: alarms-list.preferred-height;
@@ -153,7 +233,6 @@ export component AlarmPage inherits Rectangle {
                     delete-clicked(id) => { root.delete-alarm(id); }
                 }
 
-                // 空状态
                 if root.alarm-ids.length == 0: Rectangle {
                     height: 120px;
                     border-radius: AmberTheme.radius-md;
@@ -166,7 +245,7 @@ export component AlarmPage inherits Rectangle {
                         spacing: 8px;
 
                         Text {
-                            text: "⏰";
+                            text: "铃";
                             font-size: 28px;
                             horizontal-alignment: center;
                         }
@@ -183,16 +262,19 @@ export component AlarmPage inherits Rectangle {
         }
     }
 
-    // 编辑弹窗（覆盖层）
     if root.editor-visible: AlarmEditor {
         width: root.width;
         height: root.height;
         alarm-id <=> root.edit-id;
-        hour-text <=> root.edit-hour;
-        minute-text <=> root.edit-minute;
+        year-value <=> root.edit-year;
+        month-value <=> root.edit-month;
+        day-value <=> root.edit-day;
+        hour-value <=> root.edit-hour;
+        minute-value <=> root.edit-minute;
         memo-text <=> root.edit-memo;
-        save-clicked(id, hour, minute, memo) => {
-            root.save-alarm(id, hour, minute, memo);
+        adjust-field(field, delta) => { root.adjust-alarm-field(field, delta); }
+        save-clicked(id, year, month, day, hour, minute, memo) => {
+            root.save-alarm(id, year, month, day, hour, minute, memo);
             root.editor-visible = false;
         }
         cancel-clicked() => { root.editor-visible = false; }
