@@ -146,26 +146,106 @@ pub fn resize_window(ui: &AppWindow, data: &SharedAppData, dx: f32, dy: f32) {
     data.save();
 }
 
+// ---------------------------------------------------------------------------
+// 可靠的窗口查找：枚举所有顶层窗口 + 进程 ID 验证，不再依赖单一
+// FindWindowW 标题匹配（避免误匹配到同名的文件夹窗口）。
+// ---------------------------------------------------------------------------
+
 #[cfg(target_os = "windows")]
-fn to_wide(s: &str) -> Vec<u16> {
-    use std::os::windows::ffi::OsStrExt;
-    std::ffi::OsStr::new(s)
-        .encode_wide()
-        .chain(std::iter::once(0))
-        .collect()
+thread_local! {
+    /// 主窗口 HWND 缓存（内部存 isize 以便存入 RefCell）。
+    static CACHED_MAIN_HWND: std::cell::RefCell<Option<isize>> = const { std::cell::RefCell::new(None) };
+}
+
+/// 枚举所有顶层窗口，找到属于当前进程且标题精确匹配的窗口。
+/// 这是对 `FindWindowW` 的安全替代：只匹配自己进程的窗口。
+#[cfg(target_os = "windows")]
+pub fn find_own_window_by_title(title: &str) -> Option<windows::Win32::Foundation::HWND> {
+    use windows::Win32::Foundation::{BOOL, HWND, LPARAM};
+    use windows::Win32::System::Threading::GetCurrentProcessId;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        EnumWindows, GetWindowTextW, GetWindowThreadProcessId,
+    };
+
+    struct Ctx {
+        pid: u32,
+        title: String,
+        found: Option<HWND>,
+    }
+
+    let our_pid = unsafe { GetCurrentProcessId() };
+    let mut ctx = Ctx {
+        pid: our_pid,
+        title: title.to_string(),
+        found: None,
+    };
+
+    unsafe {
+        unsafe extern "system" fn enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
+            let ctx = &mut *(lparam.0 as *mut Ctx);
+
+            let mut pid = 0u32;
+            GetWindowThreadProcessId(hwnd, Some(&mut pid));
+            if pid != ctx.pid {
+                return BOOL(1); // 不是我们的进程，继续枚举
+            }
+
+            let mut buf = [0u16; 512];
+            let len = GetWindowTextW(hwnd, &mut buf);
+            if len == 0 {
+                return BOOL(1); // 无标题窗口，跳过
+            }
+
+            let wintitle = String::from_utf16_lossy(&buf[..len as usize]);
+            if wintitle == ctx.title {
+                ctx.found = Some(hwnd);
+                return BOOL(0); // 找到了，停止枚举
+            }
+
+            BOOL(1) // 继续
+        }
+
+        let _ = EnumWindows(Some(enum_proc), LPARAM(&mut ctx as *mut _ as isize));
+    }
+
+    ctx.found
+}
+
+/// 获取主窗口 HWND，带缓存。其他模块可调用此函数获取已校验的句柄。
+#[cfg(target_os = "windows")]
+pub fn get_cached_main_hwnd() -> Option<windows::Win32::Foundation::HWND> {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::IsWindow;
+
+    CACHED_MAIN_HWND.with(|cached| {
+        if let Some(raw) = *cached.borrow() {
+            let hwnd = HWND(raw as *mut _);
+            if unsafe { IsWindow(hwnd).as_bool() } {
+                return Some(hwnd);
+            }
+            // 缓存已失效，清除
+            *cached.borrow_mut() = None;
+        }
+
+        // 重新查找并缓存
+        if let Some(hwnd) = find_own_window_by_title(APP_TITLE) {
+            *cached.borrow_mut() = Some(hwnd.0 as isize);
+            return Some(hwnd);
+        }
+
+        None
+    })
 }
 
 /// 设置窗口是否置顶。
 #[cfg(target_os = "windows")]
-pub fn set_topmost(title: &str, topmost: bool) {
+pub fn set_topmost(_title: &str, topmost: bool) {
     use windows::Win32::UI::WindowsAndMessaging::{
-        FindWindowW, SetWindowPos, HWND_NOTOPMOST, HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE,
-        SWP_SHOWWINDOW,
+        SetWindowPos, HWND_NOTOPMOST, HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW,
     };
 
-    let title_wide = to_wide(title);
-    unsafe {
-        if let Ok(hwnd) = FindWindowW(None, windows::core::PCWSTR(title_wide.as_ptr())) {
+    if let Some(hwnd) = get_cached_main_hwnd() {
+        unsafe {
             let insert_after = if topmost { HWND_TOPMOST } else { HWND_NOTOPMOST };
             let _ = SetWindowPos(
                 hwnd,
@@ -176,8 +256,8 @@ pub fn set_topmost(title: &str, topmost: bool) {
                 0,
                 SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
             );
-            alarm_alert::refocus_active_alert();
         }
+        alarm_alert::refocus_active_alert();
     }
 }
 
@@ -185,15 +265,14 @@ pub fn set_topmost(title: &str, topmost: bool) {
 pub fn set_topmost(_title: &str, _topmost: bool) {}
 
 #[cfg(target_os = "windows")]
-pub fn apply_click_through(title: &str, enabled: bool) {
+pub fn apply_click_through(_title: &str, enabled: bool) {
     use windows::Win32::UI::WindowsAndMessaging::{
-        FindWindowW, GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE,
+        GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE,
         SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_EX_LAYERED, WS_EX_TRANSPARENT,
     };
 
-    let title_wide = to_wide(title);
-    unsafe {
-        if let Ok(hwnd) = FindWindowW(None, windows::core::PCWSTR(title_wide.as_ptr())) {
+    if let Some(hwnd) = get_cached_main_hwnd() {
+        unsafe {
             let mut ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32;
             let mask = WS_EX_LAYERED.0 | WS_EX_TRANSPARENT.0;
             if enabled {
@@ -220,16 +299,15 @@ pub fn apply_click_through(title: &str, enabled: bool) {
 pub fn apply_click_through(_title: &str, _enabled: bool) {}
 
 #[cfg(target_os = "windows")]
-pub fn configure_tray_only_window(title: &str) {
+pub fn configure_tray_only_window(_title: &str) {
     use windows::Win32::UI::WindowsAndMessaging::{
-        FindWindowW, GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE,
+        GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE,
         SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_EX_APPWINDOW,
         WS_EX_TOOLWINDOW,
     };
 
-    let title_wide = to_wide(title);
-    unsafe {
-        if let Ok(hwnd) = FindWindowW(None, windows::core::PCWSTR(title_wide.as_ptr())) {
+    if let Some(hwnd) = get_cached_main_hwnd() {
+        unsafe {
             let ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32;
             let tray_only_style = (ex_style | WS_EX_TOOLWINDOW.0) & !WS_EX_APPWINDOW.0;
 
@@ -253,17 +331,16 @@ pub fn configure_tray_only_window(title: &str) {
 pub fn configure_tray_only_window(_title: &str) {}
 
 #[cfg(target_os = "windows")]
-fn focus_window(title: &str, topmost: bool) {
+fn focus_window(_title: &str, topmost: bool) {
     use windows::Win32::System::Threading::{AttachThreadInput, GetCurrentThreadId};
     use windows::Win32::UI::WindowsAndMessaging::{
-        BringWindowToTop, FindWindowW, GetForegroundWindow, GetWindowThreadProcessId,
+        BringWindowToTop, GetForegroundWindow, GetWindowThreadProcessId,
         SetForegroundWindow, SetWindowPos, ShowWindow, HWND_TOP, HWND_TOPMOST,
         SW_RESTORE, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW,
     };
 
-    let title_wide = to_wide(title);
-    unsafe {
-        if let Ok(hwnd) = FindWindowW(None, windows::core::PCWSTR(title_wide.as_ptr())) {
+    if let Some(hwnd) = get_cached_main_hwnd() {
+        unsafe {
             let _ = ShowWindow(hwnd, SW_RESTORE);
 
             let current_thread = GetCurrentThreadId();
@@ -301,17 +378,33 @@ fn focus_window(title: &str, topmost: bool) {
 #[cfg(not(target_os = "windows"))]
 fn focus_window(_title: &str, _topmost: bool) {}
 
-/// 计算窗口默认右上角位置。
+/// 计算窗口默认右上角位置。优先使用主窗口所在显示器，若窗口尚未创建
+/// 或查找失败则回退到主显示器，再失败则用硬编码默认值。
 #[cfg(target_os = "windows")]
 fn calc_top_right(window_width: i32, _window_height: i32) -> (i32, i32) {
     use windows::Win32::Graphics::Gdi::{
         GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTOPRIMARY,
     };
-    use windows::Win32::UI::WindowsAndMessaging::FindWindowW;
 
-    let title_wide = to_wide(APP_TITLE);
-    unsafe {
-        if let Ok(hwnd) = FindWindowW(None, windows::core::PCWSTR(title_wide.as_ptr())) {
+    let fallback = || -> Option<(i32, i32)> {
+        let monitor = unsafe { MonitorFromWindow(None, MONITOR_DEFAULTTOPRIMARY) };
+        if monitor.0.is_null() {
+            return None;
+        }
+        let mut info = MONITORINFO {
+            cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+            ..Default::default()
+        };
+        if unsafe { GetMonitorInfoW(monitor, &mut info).as_bool() } {
+            Some((info.rcWork.right - window_width - 30, 30))
+        } else {
+            None
+        }
+    };
+
+    // 尝试用缓存的 HWND 获取所在显示器
+    if let Some(hwnd) = get_cached_main_hwnd() {
+        unsafe {
             let monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY);
             let mut info = MONITORINFO {
                 cbSize: std::mem::size_of::<MONITORINFO>() as u32,
@@ -321,6 +414,11 @@ fn calc_top_right(window_width: i32, _window_height: i32) -> (i32, i32) {
                 return (info.rcWork.right - window_width - 30, 30);
             }
         }
+    }
+
+    // 窗口尚未创建时用主显示器
+    if let Some(pos) = fallback() {
+        return pos;
     }
 
     (100, 100)

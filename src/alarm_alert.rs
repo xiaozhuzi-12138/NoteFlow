@@ -19,7 +19,7 @@ use windows::Win32::Graphics::Gdi::{
 use windows::Win32::UI::Input::KeyboardAndMouse::EnableWindow;
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::WindowsAndMessaging::{
-    FindWindowW, SetForegroundWindow, SetWindowPos, HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE,
+    SetForegroundWindow, SetWindowPos, HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE,
     SWP_SHOWWINDOW,
 };
 
@@ -193,23 +193,8 @@ fn release_modal_owner_if_no_alerts() {
 }
 
 #[cfg(target_os = "windows")]
-fn to_wide(s: &str) -> Vec<u16> {
-    use std::os::windows::ffi::OsStrExt;
-    std::ffi::OsStr::new(s)
-        .encode_wide()
-        .chain(std::iter::once(0))
-        .collect()
-}
-
-#[cfg(target_os = "windows")]
-fn find_window_by_title(title: &str) -> Option<HWND> {
-    let title_wide = to_wide(title);
-    unsafe { FindWindowW(None, windows::core::PCWSTR(title_wide.as_ptr())).ok() }
-}
-
-#[cfg(target_os = "windows")]
 fn find_main_window() -> Option<HWND> {
-    find_window_by_title(window::APP_TITLE)
+    window::get_cached_main_hwnd()
 }
 
 #[cfg(target_os = "windows")]
@@ -318,7 +303,7 @@ fn focus_topmost_alert() {
         }
     });
 
-    if let Some(alert_hwnd) = find_window_by_title("便签闹钟") {
+    if let Some(alert_hwnd) = window::find_own_window_by_title("便签闹钟") {
         unsafe {
             let _ = SetWindowPos(
                 alert_hwnd,
