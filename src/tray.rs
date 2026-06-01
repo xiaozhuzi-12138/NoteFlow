@@ -187,13 +187,13 @@ fn register_hotkeys(hwnd: HWND) -> Result<(), Box<dyn std::error::Error>> {
             hwnd,
             HOTKEY_ID_TOGGLE_CLICK_THROUGH,
             MOD_CONTROL,
-            u32::from(b'L'),
+            u32::from(b'K'),
         )?;
         RegisterHotKey(
             hwnd,
             HOTKEY_ID_TOGGLE_PINNED,
             MOD_CONTROL,
-            u32::from(b'K'),
+            u32::from(b'L'),
         )?;
     }
     Ok(())
