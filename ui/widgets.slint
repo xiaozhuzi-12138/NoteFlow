@@ -247,6 +247,7 @@ export component GlassInput inherits Rectangle {
         height: parent.height;
         vertical-alignment: center;
         color: AmberTheme.text-primary;
+        font-family: "Microsoft YaHei UI";
         font-size: 14px;
         single-line: true;
         text <=> root.text;
@@ -261,7 +262,9 @@ export component GlassInput inherits Rectangle {
         width: parent.width - 24px;
         height: parent.height - 16px;
         color: AmberTheme.text-primary;
+        font-family: "Microsoft YaHei UI";
         font-size: 14px;
+        single-line: false;
         wrap: word-wrap;
         text <=> root.text;
 
