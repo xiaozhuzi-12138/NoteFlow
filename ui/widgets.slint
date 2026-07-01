@@ -297,6 +297,10 @@ export component NoteCard inherits Rectangle {
     border-width: 1px;
     border-color: AmberTheme.border-glass;
 
+    row-touch := TouchArea {
+        double-clicked => { root.edit-clicked(root.note-id); }
+    }
+
     card-layout := HorizontalLayout {
         x: 6px;
         width: parent.width - 12px;
@@ -304,16 +308,22 @@ export component NoteCard inherits Rectangle {
         spacing: 4px;
         alignment: space-between;
 
-        // 内容文本占主体
-        content-text := Text {
-            text: root.content;
-            color: AmberTheme.text-primary;
-            font-size: 15px;
-            wrap: word-wrap;
-            overflow: elide;
-            max-height: 24px;
+        content-area := Rectangle {
             horizontal-stretch: 1;
-            vertical-alignment: center;
+            height: max(24px, content-text.preferred-height);
+            background: transparent;
+
+            content-text := Text {
+                width: parent.width;
+                text: root.content;
+                color: AmberTheme.text-primary;
+                font-size: 15px;
+                wrap: word-wrap;
+                overflow: elide;
+                max-height: 24px;
+                vertical-alignment: center;
+            }
+
         }
 
         // 操作按钮（紧凑）
